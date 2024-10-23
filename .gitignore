@@ -1,0 +1,6 @@
+.env
+*.env
+custom-config/
+custom-extensions/
+custom-lib/
+tcp-test/

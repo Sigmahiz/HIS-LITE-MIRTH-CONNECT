@@ -1,0 +1,14 @@
+version: '3.1'
+services:
+  mirthconnect:
+    image: nextgenhealthcare/connect:4.5.0
+    ports:
+      - 8080:8080
+      - 8443:8443
+      - 6661:6661
+      - ${TCP_PORT}:${TCP_PORT}
+    volumes:
+      - ./custom-config:/opt/mirth-connect/custom-config
+      - ./custom-extensions:/opt/mirth-connect/custom-extensions
+      - ./custom-lib:/opt/mirth-connect/custom-lib
+    restart: always
