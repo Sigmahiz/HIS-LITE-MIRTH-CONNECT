@@ -3,7 +3,7 @@
   <nextMetaDataId>6</nextMetaDataId>
   <name>his-specialty-sender</name>
   <description></description>
-  <revision>27</revision>
+  <revision>29</revision>
   <sourceConnector version="4.5.0">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -101,7 +101,14 @@ if(pattern === &quot;nueva-especialidad&quot;){
 
 // Configuramos que destinatario enviara el mensaje, recibe id o nombre y puede ser array
 	destinationSet.removeAllExcept([&apos;EliminarEspecialidad&apos;]);
-}
+}else {&#xd;	var parsedJson = XmlUtil.toJson(xmlMessage);
+	var parsedResult = JSON.parse(parsedJson)[&apos;result&apos;];
+	
+	channelMap.put(&apos;info&apos;, JSON.stringify({
+		&quot;code&quot;: parsedResult[&quot;codigo&quot;],
+		&quot;name&quot;: parsedResult[&quot;descripcion&quot;]
+	}));
+	destinationSet.removeAllExcept([&apos;TestDestinator&apos;]);&#xd;}
 
 //Imprimir el mensaje para verificar que todo sea correcto
 // logger.info(&quot;Mensaje XMLm extraido&quot; + xmlMessage);</script>
@@ -577,7 +584,7 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1729884500959</time>
+        <time>1730221108470</time>
         <timezone>GMT-04:00</timezone>
       </lastModified>
       <pruningSettings>
@@ -586,5 +593,6 @@ return;</undeployScript>
       </pruningSettings>
       <userId>1</userId>
     </metadata>
+    <channelTags/>
   </exportData>
 </channel>
