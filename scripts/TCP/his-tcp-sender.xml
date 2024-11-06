@@ -3,7 +3,7 @@
   <nextMetaDataId>13</nextMetaDataId>
   <name>his-tcp-sender</name>
   <description></description>
-  <revision>58</revision>
+  <revision>59</revision>
   <sourceConnector version="4.5.0">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -239,25 +239,25 @@ if(pattern === &quot;doctor-asignar-especialidad&quot;){
 	
 	var parsedJson = XmlUtil.toJson(xmlMessage);
 	var parsedResult = JSON.parse(parsedJson)[&apos;result&apos;];
-	makeResult(parsedResult);
+	makeResultDoctorSpecialty(parsedResult);
 	destinationSet.removeAllExcept([&apos;AsignarDoctorEspecialidad&apos;]);
 	
 } else if (pattern === &quot;doctor-eliminar-especialidad&quot;) {
 	
 	var parsedJson = XmlUtil.toJson(xmlMessage);
 	var parsedResult = JSON.parse(parsedJson)[&apos;result&apos;];
-	makeResult(parsedResult);
+	makeResultDoctorSpecialty(parsedResult);
 	destinationSet.removeAllExcept([&apos;EliminarDoctorEspecialidad&apos;]);
 	
 }  else if (pattern === &quot;test-doctor-especialidad&quot;) {
 	
 	var parsedJson = XmlUtil.toJson(xmlMessage);
 	var parsedResult = JSON.parse(parsedJson)[&apos;result&apos;];
-	makeResult(parsedResult);
+	makeResultDoctorSpecialty(parsedResult);
 	destinationSet.removeAllExcept([&apos;TestDoctorEspecialidad&apos;]);	
 }
 
-function makeResult(parsedResult){
+function makeResultDoctorSpecialty(parsedResult){
 	channelMap.put(&apos;info&apos;, JSON.stringify({
 			&quot;medic_register&quot;: parsedResult[&apos;registro_med&apos;],
 			&quot;specialty_code&quot;: parsedResult[&apos;cod_especialidad&apos;]
@@ -1457,7 +1457,7 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1730479271952</time>
+        <time>1730921131195</time>
         <timezone>GMT-04:00</timezone>
       </lastModified>
       <pruningSettings>
