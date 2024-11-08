@@ -1,0 +1,429 @@
+<channel version="4.5.0">
+  <id>3c54bbb9-efeb-4adb-b7e8-9f8890bebdc7</id>
+  <nextMetaDataId>2</nextMetaDataId>
+  <name>patients-seeder</name>
+  <description></description>
+  <revision>18</revision>
+  <sourceConnector version="4.5.0">
+    <metaDataId>0</metaDataId>
+    <name>sourceConnector</name>
+    <properties class="com.mirth.connect.connectors.jdbc.DatabaseReceiverProperties" version="4.5.0">
+      <pluginProperties/>
+      <pollConnectorProperties version="4.5.0">
+        <pollingType>INTERVAL</pollingType>
+        <pollOnStart>true</pollOnStart>
+        <pollingFrequency>30000</pollingFrequency>
+        <pollingHour>0</pollingHour>
+        <pollingMinute>0</pollingMinute>
+        <cronJobs/>
+        <pollConnectorPropertiesAdvanced>
+          <weekly>true</weekly>
+          <inactiveDays>
+            <boolean>false</boolean>
+            <boolean>false</boolean>
+            <boolean>false</boolean>
+            <boolean>false</boolean>
+            <boolean>false</boolean>
+            <boolean>false</boolean>
+            <boolean>false</boolean>
+            <boolean>false</boolean>
+          </inactiveDays>
+          <dayOfMonth>1</dayOfMonth>
+          <allDay>true</allDay>
+          <startingHour>8</startingHour>
+          <startingMinute>0</startingMinute>
+          <endingHour>17</endingHour>
+          <endingMinute>0</endingMinute>
+        </pollConnectorPropertiesAdvanced>
+      </pollConnectorProperties>
+      <sourceConnectorProperties version="4.5.0">
+        <responseVariable>d1</responseVariable>
+        <respondAfterProcessing>true</respondAfterProcessing>
+        <processBatch>false</processBatch>
+        <firstResponse>false</firstResponse>
+        <processingThreads>2</processingThreads>
+        <resourceIds class="linked-hash-map">
+          <entry>
+            <string>Default Resource</string>
+            <string>[Default Resource]</string>
+          </entry>
+        </resourceIds>
+        <queueBufferSize>1000</queueBufferSize>
+      </sourceConnectorProperties>
+      <driver>oracle.jdbc.driver.OracleDriver</driver>
+      <url>jdbc\:oracle\:thin\:@129.213.150.201\:1521\:SHDB</url>
+      <username>SGHVBDS</username>
+      <password>SGHVBDS21#</password>
+      <select>// Obtener la conexión de la base de datos desde el global map.
+var dbConn = globalChannelMap.get(&quot;dbConn&quot;);
+var batchSize = 100;  // Tamaño de cada lote.
+var lastRow = globalChannelMap.get(&quot;lastRow-pacientes-seeder&quot;) || 0;  // Último valor de fila almacenado para paginación.
+var startRow = lastRow + 1;  // Fila inicial del próximo lote.
+var endRow = startRow + batchSize - 1;  // Fila final del próximo lote.
+
+var sql = &quot;SELECT * FROM (SELECT VW_ADM_PACIENTE.*, ROWNUM AS RN FROM VW_ADM_PACIENTE WHERE ROWNUM &lt;= &quot; + endRow + &quot;) WHERE RN &gt;= &quot; + startRow;
+
+if (dbConn == null || dbConn.getConnection().isClosed()) {
+    // Crear la conexión.
+    dbConn = DatabaseConnectionFactory.createDatabaseConnection(
+        globalChannelMap.get(&quot;dbDriver&quot;),
+        globalChannelMap.get(&quot;dbUrl&quot;),
+        globalChannelMap.get(&quot;dbUser&quot;),
+        globalChannelMap.get(&quot;dbPassword&quot;)
+    );
+    globalChannelMap.put(&quot;dbConn&quot;, dbConn);
+}
+
+try {
+    // Ejecutar la consulta con paginación.
+    var result = dbConn.executeCachedQuery(sql);
+    logger.info(&quot;Records fetched: &quot; + result.size());
+
+    // Actualizar la posición de `lastRow-pacientes-seeder` en el global map si hay resultados.
+    if (result.size() &gt; 0) {
+        globalChannelMap.put(&quot;lastRow-pacientes-seeder&quot;, endRow);
+    } else {
+        logger.info(&quot;No more data to fetch. Resetting lastRow.&quot;);
+        globalChannelMap.put(&quot;lastRow-pacientes-seeder&quot;, 0);  // Reiniciar si no hay más datos.
+    }
+} catch (e) {
+    // Registrar el error.
+    logger.error(&quot;Exception in Database Reader: &quot; + e);
+
+    // Quitar la variable de conexión para que se recree en la siguiente iteración.
+    globalChannelMap.remove(&quot;dbConn&quot;);
+}
+
+dbConn.close();
+return result;</select>
+      <update>// This update script will be executed once after all results have been processed.
+var dbConn;
+
+try {
+	dbConn = DatabaseConnectionFactory.createDatabaseConnection(&apos;oracle.jdbc.driver.OracleDriver&apos;,&apos;jdbc\:oracle\:thin\:@129.213.150.201\:1521\:SHDB&apos;,&apos;SGHVBDS&apos;,&apos;SGHVBDS21#&apos;);
+
+} finally {
+	if (dbConn) { 
+		dbConn.close();
+	}
+}</update>
+      <useScript>true</useScript>
+      <aggregateResults>true</aggregateResults>
+      <cacheResults>true</cacheResults>
+      <keepConnectionOpen>true</keepConnectionOpen>
+      <updateMode>1</updateMode>
+      <retryCount>3</retryCount>
+      <retryInterval>10000</retryInterval>
+      <fetchSize>1000</fetchSize>
+      <encoding>DEFAULT_ENCODING</encoding>
+    </properties>
+    <transformer version="4.5.0">
+      <elements>
+        <com.mirth.connect.plugins.javascriptstep.JavaScriptStep version="4.5.0">
+          <name>makemessage</name>
+          <sequenceNumber>0</sequenceNumber>
+          <enabled>true</enabled>
+          <script>channelMap.put(&quot;FINAL_ARRAY&quot;, &quot;&quot;);
+
+var finalArray=[];
+var len=msg.children().length();
+var i=1;
+
+for each(item in msg.children())
+{
+    var itemParsed = XmlUtil.toJson(item);
+    var resultObject = JSON.parse(itemParsed)[&apos;result&apos;];
+    var patientName = resultObject[&apos;primer_nombre&apos;] + &quot; &quot;  + resultObject[&apos;segundo_nombre&apos;];
+    var patientLastname = resultObject[&apos;primer_apellido&apos;] + &quot; &quot;  + resultObject[&apos;segundo_apellido&apos;];
+    finalArray.push({
+    		&quot;hisID&quot;: resultObject[&apos;pac_id&apos;],&#xd;    		&quot;name&quot;: patientName.trim(),
+    		&quot;lastName&quot;:patientLastname.trim(),
+    		&quot;phone&quot;: resultObject[&apos;telefono&apos;],
+    		&quot;phoneAlt&quot;: resultObject[&apos;telefono_movil&apos;],
+    		&quot;birthDate&quot;: resultObject[&apos;fecha_nacimiento&apos;],
+    		&quot;gender&quot;: resultObject[&apos;sexo&apos;],
+    		&quot;DNI&quot;: resultObject[&apos;id_paciente&apos;],
+    		&quot;civilStatus&quot;: resultObject[&apos;estado_civil&apos;],
+    		&quot;bloodType&quot;: resultObject[&apos;tipo_sangre&apos;],
+    		&quot;email&quot;: resultObject[&apos;e_mail&apos;],
+    		&quot;address&quot;: resultObject[&apos;residencia_direccion&apos;],
+    		&quot;typeResidence&quot;: resultObject[&apos;Permanente&apos;],
+    		&quot;isJubilado&quot;: resultObject[&apos;jubilado&apos;] === &quot;S&quot;,
+    		&quot;isDiscapacitado&quot;: false,
+    		&quot;isDeath&quot;: resultObject[&apos;fallecido&apos;] === &quot;S&quot;,
+    		&quot;emergencyContact&quot;:{
+    			&quot;name&quot;: resultObject[&apos;persona_emergencia&apos;],
+    			&quot;lastName&quot;: resultObject[&apos;persona_emergencia&apos;],
+    			&quot;telefono&quot;: resultObject[&apos;telefono_urgencia&apos;],
+    			&quot;telefono_alternativo&quot;: resultObject[&apos;telefono_trabajo_urgencia&apos;],
+    			&quot;email&quot;: &quot;&quot;
+    		}&#xd;    	});
+    i++;
+};
+
+channelMap.put(&quot;FINAL_ARRAY&quot;, JSON.stringify(finalArray));
+
+/*
+&lt;results&gt;&#xd;
+    &lt;result&gt;&#xd;
+        &lt;codigo&gt;1&lt;/codigo&gt;&#xd;
+        &lt;nombre_paciente&gt;YAMILETH IVETTE QUEZADA GONZALEZ&lt;/nombre_paciente&gt;&#xd;
+        &lt;id_paciente&gt;8-00-441-658-&lt;/id_paciente&gt;&#xd;
+        &lt;id_paciente_f2&gt;8-441-658-&lt;/id_paciente_f2&gt;&#xd;
+        &lt;id_paciente_fris&gt;8-00-441-658-&lt;/id_paciente_fris&gt;&#xd;
+        &lt;primer_nombre&gt;YAMILETH&lt;/primer_nombre&gt;&#xd;
+        &lt;fecha_nacimiento&gt;1973-06-28 00:00:00.0&lt;/fecha_nacimiento&gt;&#xd;
+        &lt;segundo_nombre&gt;IVETTE&lt;/segundo_nombre&gt;&#xd;
+        &lt;primer_apellido&gt;QUEZADA&lt;/primer_apellido&gt;&#xd;
+        &lt;segundo_apellido&gt;GONZALEZ&lt;/segundo_apellido&gt;&#xd;
+        &lt;provincia&gt;8&lt;/provincia&gt;&#xd;
+        &lt;sigla&gt;00&lt;/sigla&gt;&#xd;
+        &lt;tomo&gt;441&lt;/tomo&gt;&#xd;
+        &lt;asiento&gt;658&lt;/asiento&gt;&#xd;
+        &lt;sexo&gt;F&lt;/sexo&gt;&#xd;
+        &lt;estado_civil&gt;CS&lt;/estado_civil&gt;&#xd;
+        &lt;nacionalidad&gt;1&lt;/nacionalidad&gt;&#xd;
+        &lt;tipo_id_paciente&gt;C&lt;/tipo_id_paciente&gt;&#xd;
+        &lt;residencia_direccion&gt;VILLA CLARA&lt;/residencia_direccion&gt;&#xd;
+        &lt;telefono&gt;64533409&lt;/telefono&gt;&#xd;
+        &lt;jubilado&gt;N&lt;/jubilado&gt;&#xd;
+        &lt;fallecido&gt;N&lt;/fallecido&gt;&#xd;
+        &lt;usuario_adiciona&gt;cellbyte&lt;/usuario_adiciona&gt;&#xd;
+        &lt;fecha_adiciona&gt;2017-05-01 00:00:00.0&lt;/fecha_adiciona&gt;&#xd;
+        &lt;usuario_modifica&gt;cellbyte&lt;/usuario_modifica&gt;&#xd;
+        &lt;fecha_modifica&gt;2017-05-01 00:00:00.0&lt;/fecha_modifica&gt;&#xd;
+        &lt;estatus&gt;A&lt;/estatus&gt;&#xd;
+        &lt;vip&gt;N&lt;/vip&gt;&#xd;
+        &lt;residencial&gt;N&lt;/residencial&gt;&#xd;
+        &lt;pac_id&gt;327&lt;/pac_id&gt;&#xd;
+        &lt;edad&gt;51&lt;/edad&gt;&#xd;
+        &lt;edad_mes&gt;4&lt;/edad_mes&gt;&#xd;
+        &lt;edad_dias&gt;11&lt;/edad_dias&gt;&#xd;
+        &lt;exp_id&gt;327&lt;/exp_id&gt;&#xd;
+        &lt;nombre_paciente2&gt;YAMILETH IVETTE QUEZADA GONZALEZ&lt;/nombre_paciente2&gt;&#xd;
+        &lt;f_nac&gt;1973-06-28 00:00:00.0&lt;/f_nac&gt;&#xd;
+        &lt;excluido&gt;N&lt;/excluido&gt;&#xd;
+        &lt;id_paciente_f3&gt;8-441-658&lt;/id_paciente_f3&gt;&#xd;
+        &lt;cedula_pac&gt;8-441-658&lt;/cedula_pac&gt;&#xd;
+        &lt;rn&gt;201&lt;/rn&gt;&#xd;
+    &lt;/result&gt;&#xd;
+&lt;/results&gt;
+
+&quot;CODIGO&quot;, &quot;NOMBRE_PACIENTE&quot;, &quot;ID_PACIENTE&quot;, &quot;ID_PACIENTE_F2&quot;, &quot;ID_PACIENTE_FRIS&quot;, &quot;PRIMER_NOMBRE&quot;, &quot;FECHA_NACIMIENTO&quot;, &quot;SEGUNDO_NOMBRE&quot;, &quot;PRIMER_APELLIDO&quot;, &quot;SEGUNDO_APELLIDO&quot;, &quot;APELLIDO_DE_CASADA&quot;, &quot;PROVINCIA&quot;, &quot;SIGLA&quot;, &quot;TOMO&quot;, &quot;ASIENTO&quot;, &quot;SEXO&quot;, &quot;ESTADO_CIVIL&quot;, &quot;NACIONALIDAD&quot;, &quot;TIPO_ID_PACIENTE&quot;, &quot;PASAPORTE&quot;, &quot;NUMERO_DE_HIJOS&quot;, &quot;LUGAR_NACIMIENTO&quot;, &quot;ZONA_POSTAL&quot;, &quot;APARTADO_POSTAL&quot;, &quot;RESIDENCIA_DIRECCION&quot;, &quot;RESIDENCIA_COMUNIDAD&quot;, &quot;RESIDENCIA_CORREGIMIENTO&quot;, &quot;RESIDENCIA_DISTRITO&quot;, &quot;RESIDENCIA_PROVINCIA&quot;, &quot;RESIDENCIA_PAIS&quot;, &quot;TELEFONO&quot;, &quot;SEGURO_SOCIAL&quot;, &quot;JUBILADO&quot;, &quot;PERSONA_DE_URGENCIA&quot;, &quot;DIRECCION_DE_URGENCIA&quot;, &quot;TELEFONO_URGENCIA&quot;, &quot;TELEFONO_TRABAJO_URGENCIA&quot;, &quot;NOMBRE_MADRE&quot;, &quot;NOMBRE_PADRE&quot;, &quot;LUGAR_TRABAJO&quot;, &quot;PUESTO_QUE_OCUPA&quot;, &quot;TELEFONO_TRABAJO&quot;, &quot;EXTENSION_OFICINA&quot;, &quot;PERIODOS_LABORADOS&quot;, &quot;TRABAJO_DIRECCION&quot;, &quot;TRABAJO_CORREGIMIENTO&quot;, &quot;TRABAJO_DISTRITO&quot;, &quot;TRABAJO_PROVINCIA&quot;, &quot;TRABAJO_PAIS&quot;, &quot;DEPARTAMENTO_DONDE_LABORA&quot;, &quot;NOMBRE_JEFE_INMEDIATO&quot;, &quot;IDENTIFICACION_CONYUGUE&quot;, &quot;TIPO_IDENTIFICACION_CONYUGUE&quot;, &quot;NOMBRE_CONYUGUE&quot;, &quot;LUGAR_TRABAJO_CONYUGUE&quot;, &quot;TELEFONO_TRABAJO_CONYUGUE&quot;, &quot;CONYUGUE_NACIONALIDAD&quot;, &quot;FAX&quot;, &quot;E_MAIL&quot;, &quot;CREDITO_PROMEDIO&quot;, &quot;FALLECIDO&quot;, &quot;FECHA_FALLECIDO&quot;, &quot;RELIGION&quot;, &quot;TIPO_SANGRE&quot;, &quot;RH&quot;, &quot;USUARIO_ADICIONA&quot;, &quot;FECHA_ADICIONA&quot;, &quot;USUARIO_MODIFICA&quot;, &quot;FECHA_MODIFICA&quot;, &quot;D_CEDULA&quot;, &quot;CLASE_PAMD&quot;, &quot;GRUPO_PAMD&quot;, &quot;SECTOR_PAMD&quot;, &quot;INGRESO_MEN&quot;, &quot;CHEQUE&quot;, &quot;NO_ADMITIR&quot;, &quot;ESTATUS&quot;, &quot;TIPO_ID_OTRO&quot;, &quot;NOMBRE_PAMD&quot;, &quot;CEDULA_PAMD&quot;, &quot;HORA_NAC&quot;, &quot;NUMERO_ID&quot;, &quot;PAC_INASA&quot;, &quot;VIP&quot;, &quot;TIPO_RESIDENCIA&quot;, &quot;DATOS_CORRECTOS&quot;, &quot;APROBACION_HNA&quot;, &quot;LIMITE&quot;, &quot;RESIDENCIAL&quot;, &quot;DATA_CORRECTA&quot;, &quot;DIAG_HNA&quot;, &quot;FECHA_VENCIM&quot;, &quot;PASE&quot;, &quot;DATOS_ADJUNTOS&quot;, &quot;PAC_UNICO&quot;, &quot;PASE_K&quot;, &quot;REGPAC&quot;, &quot;DATOS_PRUEBA&quot;, &quot;PAC_ID&quot;, &quot;TELEFONO_MOVIL&quot;, &quot;EDAD&quot;, &quot;EDAD_MES&quot;, &quot;EDAD_DIAS&quot;, &quot;EXP_ID&quot;, &quot;NOMBRE_PACIENTE2&quot;, &quot;COMIDA_ID&quot;, &quot;F_NAC&quot;, &quot;EXCLUIDO&quot;, &quot;ID_PACIENTE_F3&quot;, &quot;AVATAR&quot;, &quot;CEDULA_PAC&quot;, &quot;CODIGO_UBICACION_FE&quot;
+*/</script>
+        </com.mirth.connect.plugins.javascriptstep.JavaScriptStep>
+      </elements>
+      <inboundTemplate encoding="base64">PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+DQo8cmVzdWx0Lz4NCg==</inboundTemplate>
+      <outboundTemplate encoding="base64"></outboundTemplate>
+      <inboundDataType>XML</inboundDataType>
+      <outboundDataType>JSON</outboundDataType>
+      <inboundProperties class="com.mirth.connect.plugins.datatypes.xml.XMLDataTypeProperties" version="4.5.0">
+        <serializationProperties class="com.mirth.connect.plugins.datatypes.xml.XMLSerializationProperties" version="4.5.0">
+          <stripNamespaces>false</stripNamespaces>
+        </serializationProperties>
+        <batchProperties class="com.mirth.connect.plugins.datatypes.xml.XMLBatchProperties" version="4.5.0">
+          <splitType>Element_Name</splitType>
+          <elementName></elementName>
+          <level>1</level>
+          <query></query>
+          <batchScript></batchScript>
+        </batchProperties>
+      </inboundProperties>
+      <outboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+        <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+          <splitType>JavaScript</splitType>
+          <batchScript></batchScript>
+        </batchProperties>
+      </outboundProperties>
+    </transformer>
+    <filter version="4.5.0">
+      <elements/>
+    </filter>
+    <transportName>Database Reader</transportName>
+    <mode>SOURCE</mode>
+    <enabled>true</enabled>
+    <waitForPrevious>true</waitForPrevious>
+  </sourceConnector>
+  <destinationConnectors>
+    <connector version="4.5.0">
+      <metaDataId>1</metaDataId>
+      <name>Destination 1</name>
+      <properties class="com.mirth.connect.connectors.http.HttpDispatcherProperties" version="4.5.0">
+        <pluginProperties/>
+        <destinationConnectorProperties version="4.5.0">
+          <queueEnabled>false</queueEnabled>
+          <sendFirst>false</sendFirst>
+          <retryIntervalMillis>10000</retryIntervalMillis>
+          <regenerateTemplate>false</regenerateTemplate>
+          <retryCount>0</retryCount>
+          <rotate>false</rotate>
+          <includeFilterTransformer>false</includeFilterTransformer>
+          <threadCount>1</threadCount>
+          <threadAssignmentVariable></threadAssignmentVariable>
+          <validateResponse>false</validateResponse>
+          <resourceIds class="linked-hash-map">
+            <entry>
+              <string>Default Resource</string>
+              <string>[Default Resource]</string>
+            </entry>
+          </resourceIds>
+          <queueBufferSize>1000</queueBufferSize>
+          <reattachAttachments>true</reattachAttachments>
+        </destinationConnectorProperties>
+        <host>https://sigmaapi.phoenixtechsa.com/api/roles/mau</host>
+        <useProxyServer>false</useProxyServer>
+        <proxyAddress></proxyAddress>
+        <proxyPort></proxyPort>
+        <method>post</method>
+        <headers class="linked-hash-map"/>
+        <parameters class="linked-hash-map"/>
+        <useHeadersVariable>false</useHeadersVariable>
+        <headersVariable></headersVariable>
+        <useParametersVariable>false</useParametersVariable>
+        <parametersVariable></parametersVariable>
+        <responseXmlBody>false</responseXmlBody>
+        <responseParseMultipart>true</responseParseMultipart>
+        <responseIncludeMetadata>false</responseIncludeMetadata>
+        <responseBinaryMimeTypes>application/.*(?&lt;!json|xml)$|image/.*|video/.*|audio/.*</responseBinaryMimeTypes>
+        <responseBinaryMimeTypesRegex>true</responseBinaryMimeTypesRegex>
+        <multipart>false</multipart>
+        <useAuthentication>false</useAuthentication>
+        <authenticationType>Basic</authenticationType>
+        <usePreemptiveAuthentication>false</usePreemptiveAuthentication>
+        <username></username>
+        <password></password>
+        <content>{&quot;pacientes&quot;: ${FINAL_ARRAY}}</content>
+        <contentType>application/json</contentType>
+        <dataTypeBinary>false</dataTypeBinary>
+        <charset>DEFAULT_ENCODING</charset>
+        <socketTimeout>30000</socketTimeout>
+      </properties>
+      <transformer version="4.5.0">
+        <elements/>
+        <inboundTemplate encoding="base64"></inboundTemplate>
+        <outboundTemplate encoding="base64"></outboundTemplate>
+        <inboundDataType>JSON</inboundDataType>
+        <outboundDataType>JSON</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </outboundProperties>
+      </transformer>
+      <responseTransformer version="4.5.0">
+        <elements/>
+        <inboundDataType>JSON</inboundDataType>
+        <outboundDataType>JSON</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </outboundProperties>
+      </responseTransformer>
+      <filter version="4.5.0">
+        <elements/>
+      </filter>
+      <transportName>HTTP Sender</transportName>
+      <mode>DESTINATION</mode>
+      <enabled>true</enabled>
+      <waitForPrevious>true</waitForPrevious>
+    </connector>
+  </destinationConnectors>
+  <preprocessingScript>// Modify the message variable below to pre process data
+return message;</preprocessingScript>
+  <postprocessingScript>// This script executes once after a message has been processed
+// Responses returned from here will be stored as &quot;Postprocessor&quot; in the response map
+return;</postprocessingScript>
+  <deployScript>// Log the deployment
+logger.info(&quot;Deploying channel: &quot; + channelId);
+
+// Get the database connection from the global map (if there is one at this point).
+var dbConn = globalChannelMap.get(&quot;dbConn&quot;);
+var dbUrl=&quot;jdbc\:oracle\:thin\:@129.213.150.201\:1521\:SHDB&quot;; //PRODUCCION
+var dbUser=&quot;SGHVBDS&quot;;
+var dbPassword=&quot;SGHVBDS21#&quot;;
+var dbDriver=&quot;oracle.jdbc.driver.OracleDriver&quot;;
+
+globalChannelMap.put(&quot;dbUrl&quot;, dbUrl);
+globalChannelMap.put(&quot;dbUser&quot;, dbUser);
+globalChannelMap.put(&quot;dbPassword&quot;, dbPassword);
+globalChannelMap.put(&quot;dbDriver&quot;, dbDriver);
+// If there is not currently a database connection...
+if (dbConn == null || dbConn.getConnection().isClosed()) {
+	// Create the connection.
+logger.info(&quot;creating connection: &quot;+dbUser);
+
+	dbConn = DatabaseConnectionFactory.createDatabaseConnection(globalChannelMap.get(&quot;dbDriver&quot;),globalChannelMap.get(&quot;dbUrl&quot;),globalChannelMap.get(&quot;dbUser&quot;),globalChannelMap.get(&quot;dbPassword&quot;));
+
+logger.info(&quot;set globla connection: &quot;);
+	//script Put the new connection into the global map.
+	globalChannelMap.put(&quot;dbConn&quot;, dbConn);
+}
+
+return;</deployScript>
+  <undeployScript>// This script executes once when the channel is undeployed
+// You only have access to the globalMap and globalChannelMap here to persist data
+return;</undeployScript>
+  <properties version="4.5.0">
+    <clearGlobalChannelMap>true</clearGlobalChannelMap>
+    <messageStorageMode>DEVELOPMENT</messageStorageMode>
+    <encryptData>false</encryptData>
+    <encryptAttachments>false</encryptAttachments>
+    <encryptCustomMetaData>false</encryptCustomMetaData>
+    <removeContentOnCompletion>false</removeContentOnCompletion>
+    <removeOnlyFilteredOnCompletion>false</removeOnlyFilteredOnCompletion>
+    <removeAttachmentsOnCompletion>false</removeAttachmentsOnCompletion>
+    <initialState>STARTED</initialState>
+    <storeAttachments>false</storeAttachments>
+    <metaDataColumns>
+      <metaDataColumn>
+        <name>SOURCE</name>
+        <type>STRING</type>
+        <mappingName>mirth_source</mappingName>
+      </metaDataColumn>
+      <metaDataColumn>
+        <name>TYPE</name>
+        <type>STRING</type>
+        <mappingName>mirth_type</mappingName>
+      </metaDataColumn>
+    </metaDataColumns>
+    <attachmentProperties version="4.5.0">
+      <type>None</type>
+      <properties/>
+    </attachmentProperties>
+    <resourceIds class="linked-hash-map">
+      <entry>
+        <string>Default Resource</string>
+        <string>[Default Resource]</string>
+      </entry>
+    </resourceIds>
+  </properties>
+  <exportData>
+    <metadata>
+      <enabled>true</enabled>
+      <lastModified>
+        <time>1731085237533</time>
+        <timezone>GMT-04:00</timezone>
+      </lastModified>
+      <pruningSettings>
+        <archiveEnabled>true</archiveEnabled>
+        <pruneErroredMessages>false</pruneErroredMessages>
+      </pruningSettings>
+      <userId>1</userId>
+    </metadata>
+  </exportData>
+</channel>
