@@ -1,9 +1,9 @@
 <channel version="4.5.0">
   <id>08ceaa9e-cd6c-4e89-a49e-e62e6ffe0ac6</id>
-  <nextMetaDataId>13</nextMetaDataId>
+  <nextMetaDataId>16</nextMetaDataId>
   <name>his-tcp-sender</name>
   <description></description>
-  <revision>59</revision>
+  <revision>78</revision>
   <sourceConnector version="4.5.0">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -276,8 +276,136 @@ Patron a recibir
 */</script>
         </com.mirth.connect.plugins.javascriptstep.JavaScriptStep>
         <com.mirth.connect.plugins.javascriptstep.JavaScriptStep version="4.5.0">
-          <name>Delete all channels</name>
+          <name>Patients TCP</name>
           <sequenceNumber>3</sequenceNumber>
+          <enabled>true</enabled>
+          <script>// Verifyt if message is from nestjs parser
+var rawMsg = msg;
+var hasHash = rawMsg.indexOf(&apos;#&apos;);
+if( hasHash !== -1 &amp;&amp; hasHash &lt; 6 ){
+	rawMsg = rawMsg.substring(hasHash + 1);
+};
+
+var parsedMessage = JSON.parse(rawMsg);
+var xmlMessage = parsedMessage.data;
+var pattern = parsedMessage.pattern;
+
+//Con esto tenemos ya para manejar los patrones de TCP/IP, es importante que los datos vengan en un mensaje en json con: {&quot;pattern&quot;: &quot;patron&quot;, &quot;data&quot;: &quot;XML&quot;}
+
+
+if(pattern === &quot;crear-paciente&quot;){
+	var parsedJson = XmlUtil.toJson(xmlMessage);
+	var parsedResult = JSON.parse(parsedJson)[&apos;result&apos;];
+	makeResultPatient(parsedResult);
+	destinationSet.removeAllExcept([&apos;CrearPaciente&apos;]);
+} else if (pattern === &quot;actualizar-paciente&quot;) {
+	var parsedJson = XmlUtil.toJson(xmlMessage);
+	var parsedResult = JSON.parse(parsedJson)[&apos;result&apos;];
+	makeResultPatient(parsedResult);
+	destinationSet.removeAllExcept([&apos;EditarPaciente&apos;]);
+}
+
+function makeResultPatient(resultObject){
+    var patientName = resultObject[&apos;primer_nombre&apos;] + &quot; &quot;  + resultObject[&apos;segundo_nombre&apos;];
+    var patientLastname = resultObject[&apos;primer_apellido&apos;] + &quot; &quot;  + resultObject[&apos;segundo_apellido&apos;];
+	channelMap.put(&apos;info&apos;, JSON.stringify({
+    		&quot;hisID&quot;: resultObject[&apos;pac_id&apos;],&#xd;    		&quot;name&quot;: patientName.trim(),
+    		&quot;lastName&quot;:patientLastname.trim(),
+    		&quot;phone&quot;: resultObject[&apos;telefono&apos;],
+    		&quot;phoneAlt&quot;: resultObject[&apos;telefono_movil&apos;],
+    		&quot;birthDate&quot;: resultObject[&apos;fecha_nacimiento&apos;],
+    		&quot;gender&quot;: resultObject[&apos;sexo&apos;],
+    		&quot;DNI&quot;: resultObject[&apos;id_paciente&apos;],
+    		&quot;civilStatus&quot;: resultObject[&apos;estado_civil&apos;],
+    		&quot;bloodType&quot;: resultObject[&apos;tipo_sangre&apos;],
+    		&quot;email&quot;: resultObject[&apos;e_mail&apos;],
+    		&quot;address&quot;: resultObject[&apos;residencia_direccion&apos;],
+    		&quot;typeResidence&quot;: resultObject[&apos;Permanente&apos;],
+    		&quot;isJubilado&quot;: resultObject[&apos;jubilado&apos;] === &quot;S&quot;,
+    		&quot;isDiscapacitado&quot;: false,
+    		&quot;isDeath&quot;: resultObject[&apos;fallecido&apos;] === &quot;S&quot;&#xd;    	}));
+};
+
+//Imprimir el mensaje para verificar que todo sea correcto
+// logger.info(&quot;Mensaje XMLm extraido&quot; + xmlMessage);
+
+/* 
+Patron a recibir
+&lt;result&gt;
+  &lt;pac_id&gt;
+  &lt;primer_nombre&gt;
+  &lt;segundo_nombre&gt;
+  &lt;primer_apellido&gt;
+  &lt;segundo_apellido&gt;
+  &lt;telefono&gt;
+  &lt;telefono_movil&gt;
+  &lt;fecha_nacimiento&gt;
+  &lt;sexo&gt;
+  &lt;id_paciente&gt;
+  &lt;estado_civil&gt;
+  &lt;tipo_sangre&gt;
+  &lt;e_mail&gt;
+  &lt;residencia_direccion&gt;
+  &lt;Permanente&gt;
+  &lt;jubilado&gt;
+  &lt;fallecido&gt;
+&lt;/result&gt;
+*/</script>
+        </com.mirth.connect.plugins.javascriptstep.JavaScriptStep>
+        <com.mirth.connect.plugins.javascriptstep.JavaScriptStep version="4.5.0">
+          <name>Patients Emergency TCP</name>
+          <sequenceNumber>4</sequenceNumber>
+          <enabled>true</enabled>
+          <script>// Verifyt if message is from nestjs parser
+var rawMsg = msg;
+var hasHash = rawMsg.indexOf(&apos;#&apos;);
+if( hasHash !== -1 &amp;&amp; hasHash &lt; 6 ){
+	rawMsg = rawMsg.substring(hasHash + 1);
+};
+
+var parsedMessage = JSON.parse(rawMsg);
+var xmlMessage = parsedMessage.data;
+var pattern = parsedMessage.pattern;
+
+//Con esto tenemos ya para manejar los patrones de TCP/IP, es importante que los datos vengan en un mensaje en json con: {&quot;pattern&quot;: &quot;patron&quot;, &quot;data&quot;: &quot;XML&quot;}
+
+
+if(pattern === &quot;emergencia-paciente&quot;){
+	var parsedJson = XmlUtil.toJson(xmlMessage);
+	var parsedResult = JSON.parse(parsedJson)[&apos;result&apos;];
+	makeResultPatientEmergency(parsedResult);
+	destinationSet.removeAllExcept([&apos;ContactoEmergenciaPaciente&apos;]);
+}
+
+function makeResultPatientEmergency(resultObject){
+    var patientName = resultObject[&apos;primer_nombre&apos;] + &quot; &quot;  + resultObject[&apos;segundo_nombre&apos;];
+    var patientLastname = resultObject[&apos;primer_apellido&apos;] + &quot; &quot;  + resultObject[&apos;segundo_apellido&apos;];
+	channelMap.put(&apos;info&apos;, JSON.stringify({
+    		&quot;hisID&quot;: resultObject[&apos;pac_id&apos;],&#xd;    		&quot;emergencyContact&quot;:{
+    			&quot;name&quot;: resultObject[&apos;persona_emergencia&apos;],
+    			&quot;lastName&quot;: resultObject[&apos;persona_emergencia&apos;],
+    			&quot;telefono&quot;: resultObject[&apos;telefono_urgencia&apos;],
+    			&quot;telefono_alternativo&quot;: resultObject[&apos;telefono_trabajo_urgencia&apos;],
+    			&quot;email&quot;: &quot;&quot;
+    		}&#xd;    	}));
+};
+
+//Imprimir el mensaje para verificar que todo sea correcto
+// logger.info(&quot;Mensaje XMLm extraido&quot; + xmlMessage);
+
+/* 
+Patron a recibir
+&lt;result&gt;
+  &lt;pac_id&gt;
+  &lt;persona_emergencia&gt;
+  &lt;telefono_urgencia&gt;
+  &lt;telefono_trabajo_urgencia&gt;
+&lt;/result&gt;
+*/</script>
+        </com.mirth.connect.plugins.javascriptstep.JavaScriptStep>
+        <com.mirth.connect.plugins.javascriptstep.JavaScriptStep version="4.5.0">
+          <name>Delete all channels</name>
+          <sequenceNumber>5</sequenceNumber>
           <enabled>true</enabled>
           <script>var destinationPatterns = [
 	&quot;test-especialidad&quot;,
@@ -290,7 +418,10 @@ Patron a recibir
 	&quot;eliminar-doctor&quot;,
 	&quot;test-doctor-especialidad&quot;,
 	&quot;doctor-asignar-especialidad&quot;,
-	&quot;doctor-eliminar-especialidad&quot;
+	&quot;doctor-eliminar-especialidad&quot;,
+	&quot;crear-paciente&quot;,
+	&quot;actualizar-paciente&quot;,
+	&quot;emergencia-paciente&quot;
 ];
 
 var rawMsg = msg;
@@ -1407,6 +1538,297 @@ if(!destinationPatterns.includes(pattern)){
       <enabled>true</enabled>
       <waitForPrevious>true</waitForPrevious>
     </connector>
+    <connector version="4.5.0">
+      <metaDataId>13</metaDataId>
+      <name>CrearPaciente</name>
+      <properties class="com.mirth.connect.connectors.http.HttpDispatcherProperties" version="4.5.0">
+        <pluginProperties/>
+        <destinationConnectorProperties version="4.5.0">
+          <queueEnabled>false</queueEnabled>
+          <sendFirst>false</sendFirst>
+          <retryIntervalMillis>10000</retryIntervalMillis>
+          <regenerateTemplate>false</regenerateTemplate>
+          <retryCount>0</retryCount>
+          <rotate>false</rotate>
+          <includeFilterTransformer>false</includeFilterTransformer>
+          <threadCount>1</threadCount>
+          <threadAssignmentVariable></threadAssignmentVariable>
+          <validateResponse>false</validateResponse>
+          <resourceIds class="linked-hash-map">
+            <entry>
+              <string>Default Resource</string>
+              <string>[Default Resource]</string>
+            </entry>
+          </resourceIds>
+          <queueBufferSize>1000</queueBufferSize>
+          <reattachAttachments>true</reattachAttachments>
+        </destinationConnectorProperties>
+        <host>https://sigmaapi.phoenixtechsa.com/api/his-integration/patients</host>
+        <useProxyServer>false</useProxyServer>
+        <proxyAddress></proxyAddress>
+        <proxyPort></proxyPort>
+        <method>post</method>
+        <headers class="linked-hash-map"/>
+        <parameters class="linked-hash-map"/>
+        <useHeadersVariable>false</useHeadersVariable>
+        <headersVariable></headersVariable>
+        <useParametersVariable>false</useParametersVariable>
+        <parametersVariable></parametersVariable>
+        <responseXmlBody>false</responseXmlBody>
+        <responseParseMultipart>true</responseParseMultipart>
+        <responseIncludeMetadata>false</responseIncludeMetadata>
+        <responseBinaryMimeTypes>application/.*(?&lt;!json|xml)$|image/.*|video/.*|audio/.*</responseBinaryMimeTypes>
+        <responseBinaryMimeTypesRegex>true</responseBinaryMimeTypesRegex>
+        <multipart>false</multipart>
+        <useAuthentication>false</useAuthentication>
+        <authenticationType>Basic</authenticationType>
+        <usePreemptiveAuthentication>false</usePreemptiveAuthentication>
+        <username></username>
+        <password></password>
+        <content>{&quot;paciente&quot;: ${info}}</content>
+        <contentType>application/json</contentType>
+        <dataTypeBinary>false</dataTypeBinary>
+        <charset>DEFAULT_ENCODING</charset>
+        <socketTimeout>30000</socketTimeout>
+      </properties>
+      <transformer version="4.5.0">
+        <elements/>
+        <inboundTemplate encoding="base64"></inboundTemplate>
+        <outboundTemplate encoding="base64"></outboundTemplate>
+        <inboundDataType>JSON</inboundDataType>
+        <outboundDataType>JSON</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </outboundProperties>
+      </transformer>
+      <responseTransformer version="4.5.0">
+        <elements/>
+        <inboundDataType>JSON</inboundDataType>
+        <outboundDataType>JSON</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </outboundProperties>
+      </responseTransformer>
+      <filter version="4.5.0">
+        <elements/>
+      </filter>
+      <transportName>HTTP Sender</transportName>
+      <mode>DESTINATION</mode>
+      <enabled>true</enabled>
+      <waitForPrevious>true</waitForPrevious>
+    </connector>
+    <connector version="4.5.0">
+      <metaDataId>14</metaDataId>
+      <name>EditarPaciente</name>
+      <properties class="com.mirth.connect.connectors.http.HttpDispatcherProperties" version="4.5.0">
+        <pluginProperties/>
+        <destinationConnectorProperties version="4.5.0">
+          <queueEnabled>false</queueEnabled>
+          <sendFirst>false</sendFirst>
+          <retryIntervalMillis>10000</retryIntervalMillis>
+          <regenerateTemplate>false</regenerateTemplate>
+          <retryCount>0</retryCount>
+          <rotate>false</rotate>
+          <includeFilterTransformer>false</includeFilterTransformer>
+          <threadCount>1</threadCount>
+          <threadAssignmentVariable></threadAssignmentVariable>
+          <validateResponse>false</validateResponse>
+          <resourceIds class="linked-hash-map">
+            <entry>
+              <string>Default Resource</string>
+              <string>[Default Resource]</string>
+            </entry>
+          </resourceIds>
+          <queueBufferSize>1000</queueBufferSize>
+          <reattachAttachments>true</reattachAttachments>
+        </destinationConnectorProperties>
+        <host>https://sigmaapi.phoenixtechsa.com/api/his-integration/patients</host>
+        <useProxyServer>false</useProxyServer>
+        <proxyAddress></proxyAddress>
+        <proxyPort></proxyPort>
+        <method>put</method>
+        <headers class="linked-hash-map"/>
+        <parameters class="linked-hash-map"/>
+        <useHeadersVariable>false</useHeadersVariable>
+        <headersVariable></headersVariable>
+        <useParametersVariable>false</useParametersVariable>
+        <parametersVariable></parametersVariable>
+        <responseXmlBody>false</responseXmlBody>
+        <responseParseMultipart>true</responseParseMultipart>
+        <responseIncludeMetadata>false</responseIncludeMetadata>
+        <responseBinaryMimeTypes>application/.*(?&lt;!json|xml)$|image/.*|video/.*|audio/.*</responseBinaryMimeTypes>
+        <responseBinaryMimeTypesRegex>true</responseBinaryMimeTypesRegex>
+        <multipart>false</multipart>
+        <useAuthentication>false</useAuthentication>
+        <authenticationType>Basic</authenticationType>
+        <usePreemptiveAuthentication>false</usePreemptiveAuthentication>
+        <username></username>
+        <password></password>
+        <content>{&quot;editar-paciente&quot;: ${info}}</content>
+        <contentType>application/json</contentType>
+        <dataTypeBinary>false</dataTypeBinary>
+        <charset>DEFAULT_ENCODING</charset>
+        <socketTimeout>30000</socketTimeout>
+      </properties>
+      <transformer version="4.5.0">
+        <elements/>
+        <inboundTemplate encoding="base64"></inboundTemplate>
+        <outboundTemplate encoding="base64"></outboundTemplate>
+        <inboundDataType>JSON</inboundDataType>
+        <outboundDataType>JSON</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </outboundProperties>
+      </transformer>
+      <responseTransformer version="4.5.0">
+        <elements/>
+        <inboundDataType>JSON</inboundDataType>
+        <outboundDataType>JSON</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </outboundProperties>
+      </responseTransformer>
+      <filter version="4.5.0">
+        <elements/>
+      </filter>
+      <transportName>HTTP Sender</transportName>
+      <mode>DESTINATION</mode>
+      <enabled>true</enabled>
+      <waitForPrevious>true</waitForPrevious>
+    </connector>
+    <connector version="4.5.0">
+      <metaDataId>15</metaDataId>
+      <name>ContactoEmergenciaPaciente</name>
+      <properties class="com.mirth.connect.connectors.http.HttpDispatcherProperties" version="4.5.0">
+        <pluginProperties/>
+        <destinationConnectorProperties version="4.5.0">
+          <queueEnabled>false</queueEnabled>
+          <sendFirst>false</sendFirst>
+          <retryIntervalMillis>10000</retryIntervalMillis>
+          <regenerateTemplate>false</regenerateTemplate>
+          <retryCount>0</retryCount>
+          <rotate>false</rotate>
+          <includeFilterTransformer>false</includeFilterTransformer>
+          <threadCount>1</threadCount>
+          <threadAssignmentVariable></threadAssignmentVariable>
+          <validateResponse>false</validateResponse>
+          <resourceIds class="linked-hash-map">
+            <entry>
+              <string>Default Resource</string>
+              <string>[Default Resource]</string>
+            </entry>
+          </resourceIds>
+          <queueBufferSize>1000</queueBufferSize>
+          <reattachAttachments>true</reattachAttachments>
+        </destinationConnectorProperties>
+        <host>https://sigmaapi.phoenixtechsa.com/api/his-integration/patients-emergency-contact</host>
+        <useProxyServer>false</useProxyServer>
+        <proxyAddress></proxyAddress>
+        <proxyPort></proxyPort>
+        <method>post</method>
+        <headers class="linked-hash-map"/>
+        <parameters class="linked-hash-map"/>
+        <useHeadersVariable>false</useHeadersVariable>
+        <headersVariable></headersVariable>
+        <useParametersVariable>false</useParametersVariable>
+        <parametersVariable></parametersVariable>
+        <responseXmlBody>false</responseXmlBody>
+        <responseParseMultipart>true</responseParseMultipart>
+        <responseIncludeMetadata>false</responseIncludeMetadata>
+        <responseBinaryMimeTypes>application/.*(?&lt;!json|xml)$|image/.*|video/.*|audio/.*</responseBinaryMimeTypes>
+        <responseBinaryMimeTypesRegex>true</responseBinaryMimeTypesRegex>
+        <multipart>false</multipart>
+        <useAuthentication>false</useAuthentication>
+        <authenticationType>Basic</authenticationType>
+        <usePreemptiveAuthentication>false</usePreemptiveAuthentication>
+        <username></username>
+        <password></password>
+        <content>{&quot;contacto-emergencia&quot;: ${info}}</content>
+        <contentType>application/json</contentType>
+        <dataTypeBinary>false</dataTypeBinary>
+        <charset>DEFAULT_ENCODING</charset>
+        <socketTimeout>30000</socketTimeout>
+      </properties>
+      <transformer version="4.5.0">
+        <elements/>
+        <inboundTemplate encoding="base64"></inboundTemplate>
+        <outboundTemplate encoding="base64"></outboundTemplate>
+        <inboundDataType>JSON</inboundDataType>
+        <outboundDataType>JSON</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </outboundProperties>
+      </transformer>
+      <responseTransformer version="4.5.0">
+        <elements/>
+        <inboundDataType>JSON</inboundDataType>
+        <outboundDataType>JSON</outboundDataType>
+        <inboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </inboundProperties>
+        <outboundProperties class="com.mirth.connect.plugins.datatypes.json.JSONDataTypeProperties" version="4.5.0">
+          <batchProperties class="com.mirth.connect.plugins.datatypes.json.JSONBatchProperties" version="4.5.0">
+            <splitType>JavaScript</splitType>
+            <batchScript></batchScript>
+          </batchProperties>
+        </outboundProperties>
+      </responseTransformer>
+      <filter version="4.5.0">
+        <elements/>
+      </filter>
+      <transportName>HTTP Sender</transportName>
+      <mode>DESTINATION</mode>
+      <enabled>true</enabled>
+      <waitForPrevious>true</waitForPrevious>
+    </connector>
   </destinationConnectors>
   <preprocessingScript>// Modify the message variable below to pre process data
 return message;</preprocessingScript>
@@ -1457,7 +1879,7 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1730921131195</time>
+        <time>1731342546862</time>
         <timezone>GMT-04:00</timezone>
       </lastModified>
       <pruningSettings>
