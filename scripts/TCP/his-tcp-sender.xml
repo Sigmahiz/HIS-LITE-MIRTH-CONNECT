@@ -3,7 +3,7 @@
   <nextMetaDataId>16</nextMetaDataId>
   <name>his-tcp-sender</name>
   <description></description>
-  <revision>78</revision>
+  <revision>80</revision>
   <sourceConnector version="4.5.0">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -1879,7 +1879,7 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1731342546862</time>
+        <time>1731432135295</time>
         <timezone>GMT-04:00</timezone>
       </lastModified>
       <pruningSettings>
