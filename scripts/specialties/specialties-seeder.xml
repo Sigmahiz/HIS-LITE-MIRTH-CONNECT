@@ -3,7 +3,7 @@
   <nextMetaDataId>2</nextMetaDataId>
   <name>specialties-seeder</name>
   <description></description>
-  <revision>5</revision>
+  <revision>2</revision>
   <sourceConnector version="4.5.0">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -179,7 +179,7 @@ channelMap.put(&quot;FINAL_ARRAY&quot;, JSON.stringify(finalArray));</script>
           <queueBufferSize>1000</queueBufferSize>
           <reattachAttachments>true</reattachAttachments>
         </destinationConnectorProperties>
-        <host>https://sigmaapi.phoenixtechsa.com/api/his-integration/specialties/seeder</host>
+        <host>https://sigmaapi.phoenixtechsa.com/api/integration/specialties/seeder</host>
         <useProxyServer>false</useProxyServer>
         <proxyAddress></proxyAddress>
         <proxyPort></proxyPort>
@@ -325,7 +325,7 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1729714209913</time>
+        <time>1731521467099</time>
         <timezone>GMT-04:00</timezone>
       </lastModified>
       <pruningSettings>

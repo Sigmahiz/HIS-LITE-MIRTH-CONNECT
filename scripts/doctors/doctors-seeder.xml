@@ -3,7 +3,7 @@
   <nextMetaDataId>2</nextMetaDataId>
   <name>doctors-seeder</name>
   <description></description>
-  <revision>24</revision>
+  <revision>28</revision>
   <sourceConnector version="4.5.0">
     <metaDataId>0</metaDataId>
     <name>sourceConnector</name>
@@ -209,7 +209,7 @@ channelMap.put(&quot;FINAL_ARRAY&quot;, JSON.stringify(finalArray));</script>
           <queueBufferSize>1000</queueBufferSize>
           <reattachAttachments>true</reattachAttachments>
         </destinationConnectorProperties>
-        <host>https://sigmaapi.phoenixtechsa.com/api/roles/mau</host>
+        <host>https://sigmaapi.phoenixtechsa.com/api/integration/doctors/seeder</host>
         <useProxyServer>false</useProxyServer>
         <proxyAddress></proxyAddress>
         <proxyPort></proxyPort>
@@ -355,7 +355,7 @@ return;</undeployScript>
     <metadata>
       <enabled>true</enabled>
       <lastModified>
-        <time>1730312797791</time>
+        <time>1731521755869</time>
         <timezone>GMT-04:00</timezone>
       </lastModified>
       <pruningSettings>
@@ -364,6 +364,5 @@ return;</undeployScript>
       </pruningSettings>
       <userId>1</userId>
     </metadata>
-    <channelTags/>
   </exportData>
 </channel>
